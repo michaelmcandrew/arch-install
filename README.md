@@ -1,19 +1,19 @@
 # Michael's Arch Linux installation guide for the ThinkPad x220
 
-Arch Linux does not have an automated installer. Instead it has a comprehensive  installation guide, available at https://wiki.archlinux.org/index.php/installation_guide. That guide is fantastic, but 'too much information' to serve as a reference for how I got Arch Linux up and running on my ThinkPad. This guide documents the specific path I took through the installation. I'm writing it as a reference for the re-installation of my machine if that should become necessary, and also as a good starting point for an Arch Linux installation that meets my needs on other machines. It is also a learning exercise in Arch Linux and some 'low level' Linux topics.
+Arch Linux does not have an automated installation process. Instead, it offers a live CD that boots to a prompt with a minimal set of packages and scripts that can be used to install a system and an accompanying installation guide, available at https://wiki.archlinux.org/index.php/installation_guide.
 
-My first attempt at systematising the installation was to write an installation script. This worked OK but not brilliantly and when I came to run the script again a few months later, it didn't complete. It was not very thoroughly documented and it took a while for me to work out  what the issues were. This, along with the fact that writing an install script is not a trivial task, lead my to try another approach. Hence this guide, completed in July 2017.
+The guide is comprehensive but takes a long time to grok in its entirety. Hence I have written this guide, that documents the specific steps I took to install Arch Linux on my ThinkPad. It should serve as a reference for the re-installation of Arch on my ThinkPad, if necessary, and as a good starting point for the installation of Arch on my other machines. It is also a learning exercise in Arch Linux and some 'low level' Linux topics.
 
-If you're reading this guide much later than July 2017, things are likely to have moved on, and you may want to consult the Arch Wiki for more up to date techniques and components, etc.
+This guide was written in July 2017. If you're reading this guide much later, then things are likely to have moved on and you may want to consult the Arch Wiki for more up to date techniques and components, etc.
 
-It's worth remembering that, although it is a manual process, the tasks we are completing in this installation are not very different from other operating system installations. In breif, we are:
+It's worth remembering that, although the installation is a fairly manual process, the tasks we are completing in this installation are not very different from other operating system installations. In brief, we are:
 
 * Partitioning (and in this instance, encrypting) the disk(s)
-* Choosing regional settings (e.g. keyboard layout and timezone)
+* Choosing regional settings (e.g. keyboard layout and time-zone)
 * Downloading and installing packages
 * Configuring a boot loader
 
-In the steps below, I've tried to follow the latest recommendations, to the extent that the hardware I am installing on will allow it (GPT, UEFI, systemd-boot, etc.)
+
 
 ## Installation media
 
@@ -28,6 +28,14 @@ You can create a bootable USB drive as follows:
 
 See https://wiki.archlinux.org/index.php/USB_flash_installation_media for more details.
 
+## UEFI setup
+
+Press `F1` after switching on the computer to enter `ThinkPad Setup`. You can reset most settings to their defaults by choosing `Load Setup Defaults` in the `Restart` menu.
+
+In the `Startup` > `Boot` screen, ensure that you can boot from the USB HDD and also from the primary hard-drive (so that when you reboot and remove the USB drive, you boot from the hard-drive).
+
+For extra security, you may wish to password protect `ThinkPad Setup` with a Supervisor Password (in Secuity > Password) and remove all devices from the boot priority order apart from your primary hard-drive.
+
 ## Booting the installation media
 
 Ensure that you are booting in UEFI mode and that you can boot from USB. Insert the installion media into the ThinkPad and boot. Hit F12 while the machine is booting to bring up a menu that will allow you to boot from the USB drive. Select the USB drive to boot the install image.
@@ -40,15 +48,15 @@ There are a few things to do before installing the base system.
 
 ### Set the keyboard
 
-Set up the keyboard so that our keys work as expected. On my UK ThinkPad, this is as simple as `loadkeys uk`.
+Set up the keyboard so that the keyboard works as expected with `loadkeys uk`. or something similar for different keyboards. See https://wiki.archlinux.org/index.php/Keyboard_configuration_in_console for more information.
 
 ### Connect to the internet
 
 Connect to the internet so you can download packages as part of this install.
 
-The Arch installer uses `netctl` ('a CLI-based tool used to configure and manage network connections via profiles'). Any plugged in ethernet connection should connect automatically. You can connect wirelessly by using `wifi-menu`.
+The Arch installer uses `netctl` ('a CLI-based tool used to configure and manage network connections via profiles'). Any plugged in ethernet connection should connect automatically. The simplest way to connect to a connect to a wireless network is by using `wifi-menu`.
 
-If you like, you can create a new connection profile manually based on one of the examples in /etc/netctl/examples. For more information, try `man netctl` or the [netctl](https://wiki.archlinux.org/index.php/Netctl) page on the Arch Linux wiki.
+Alternatively, you can create a new connection profile manually based on one of the examples in /etc/netctl/examples. For more information, try `man netctl` or the [netctl](https://wiki.archlinux.org/index.php/Netctl) page on the Arch Linux wiki.
 
 At this point, it probably makes sense to test network connectivity with a ping to google.com or similar.
 
@@ -86,7 +94,7 @@ Use `cryptsetup` to create an encrypted disk on /dev/sda1
 
 `cryptsetup -y -v luksFormat /dev/sda1`
 
-Open the encrypted drive so it is available at `/dev/mapper/cryptroot` with `cryptsetup open /dev/sda3 cryptroot`.
+Open the encrypted drive so it is available at `/dev/mapper/cryptroot` with `cryptsetup open /dev/sda1 cryptroot`.
 
 For more information on encryption, see https://wiki.archlinux.org/index.php/Dm-crypt/Encrypting_an_entire_system#Simple_partition_layout_with_LUKS.
 
@@ -145,7 +153,7 @@ We need to install microcode updates. See https://wiki.archlinux.org/index.php/m
 
 ### Wireless networking
 
-`pacman -S iw wpa_supplicant` is necessary if we will only be able to connect wirelessly after booting up the installed system. It's probably worth installing at this point in time in any case, if you need to connect wirelessly.
+Installing `pacman -S iw wpa_supplicant dialog` makes it simple to connect wirelessly after booting up the installed system. Unless you want to fiddle around with a lot of command It's probably worth installing at this point in time in any case, if you need to connect wirelessly.
 
 TODO: ensure that I need to carry out this step
 
@@ -153,7 +161,7 @@ TODO: ensure that I need to carry out this step
 
 We need to recreate initramfs to work with the encrypted filesystem.
 
-First, edit `/etc/mkinitcpio.conf` and ensure that the following three words (`keyboard`, `keymap`, and `encrypt`) are added to the `HOOKS=...` line if they are not already present.
+First, edit `/etc/mkinitcpio.conf` and ensure that the following three words (`keyboard`, `keymap`, and `encrypt`) are added to the `HOOKS=...` line if they are not already present. Ensure that they are written in the order specified above.
 
 Read the comments in the `/etc/mkinitcpio.conf` file and https://wiki.archlinux.org/index.php/Mkinitcpio for more information.
 
@@ -162,8 +170,6 @@ Then recreate the initramfs file with `mkinitcpio -p linux`.
 ## Boot loader
 
 Configure the UEFI bootloader.
-
-If you are interested in how UEFI works, then this is a great resource: https://www.happyassassin.net/2014/01/25/uefi-boot-how-does-that-actually-work-then/.
 
 Install the systemd-bootloader with `bootctl --path=/boot install`. This copies the systemd-boot binary to the EFI System Partition here: /boot/EFI/systemd/systemd-bootx64.efi and also here: /boot/EFI/Boot/BOOTX64.EFI (both files are identical). It also adds systemd-boot to the boot loader and sets it as the default.
 
@@ -177,7 +183,7 @@ timeout 0
 editor 0
 ```
 
-This sets `/boot/efi/loader/entries/arch.conf` as the default entry. Since we only have one entry it makes sense to set the timeout to 0 which will boot it immediatley.
+This sets `/boot/efi/loader/entries/arch.conf` as the default entry. Since we only have one entry it makes sense to set timeout to 0 which will boot the default immediately.
 
 Create a new file `/boot/efi/loader/entries/arch.conf` to contain details of the Arch Linux system we want to boot. The file should look similar to the following example.
 
@@ -200,13 +206,8 @@ Note: the UUID passed to cryptdevice is the UUID of the **parent** device that c
 
 You can find the UUID of the encrypted device with `lsblk -f` as long as it has been opened.
 
-## Configure user accounts
+If you are interested in how UEFI works, then this is a great resource: https://www.happyassassin.net/2014/01/25/uefi-boot-how-does-that-actually-work-then/.
 
-Configure a password for root with `passwd`.
-
-Create a user for michael `useradd -m -G wheel michael`.
-
-Let users in the wheel group do passwordless sudo by commenting out the appropriate line in  `/etc/sudoers`.
 
 ### Reboot
 
@@ -216,8 +217,17 @@ Reboot the system by typing `reboot`
 
 ## Post installation configuration
 
-See https://wiki.archlinux.org/index.php/General_recommendations for a recommended list of things to do once Arch is installed.
-and https://wiki.archlinux.org/index.php/List_of_applications for some ideas on packages that you should install
+### Configure user accounts
+
+Configure a password for root with `passwd`.
+
+Create a user for michael `useradd -m -G wheel michael`.
+
+Let users in the wheel group do passwordless sudo by commenting out the appropriate line in  `/etc/sudoers`.
+
+## Useful packages
+
+Install the following useful packages and package groups with `pacman -S...`
 
 ```
 atom
@@ -227,15 +237,21 @@ git
 gnome
 iw
 sudo
+vim
 wpa_supplicant
 zsh
 zsh-completions
 ```
 
-is a random sample of packaes that I would recommend.
+See https://wiki.archlinux.org/index.php/General_recommendations for a recommended list of things to do once Arch is installed.
+and https://wiki.archlinux.org/index.php/List_of_applications for some ideas on packages that you should install
+
+# Desktop environment
+
+Install the gnome desktop environment and display manager with `pacman -S gnome`.
+
+Enable the gdm login at boot by enabling the systemd service `systemctl enable gdm.service`
 
 # TODO
 
-* Check back against official install guide to see if I have missed anything
-* reinstall using this guide
 * Work out if I should switch from netctl to systemd-networkd
