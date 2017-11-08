@@ -1,10 +1,10 @@
-# Michael's Arch Linux installation guide for the ThinkPad x220
+# Michael's Arch Linux installation guide
 
 Arch Linux does not have an automated installation process. Instead, it offers a live CD that boots to a prompt with a minimal set of packages and scripts that can be used to install a system and an accompanying installation guide, available at https://wiki.archlinux.org/index.php/installation_guide.
 
-The guide is comprehensive but takes a long time to grok in its entirety. Hence I have written this guide, that documents the specific steps I took to install Arch Linux on my ThinkPad. It should serve as a reference for the re-installation of Arch on my ThinkPad, if necessary, and as a good starting point for the installation of Arch on my other machines. It is also a learning exercise in Arch Linux and some 'low level' Linux topics.
+The guide is comprehensive but takes a long time to grok in its entirety. Hence I have written this guide, that documents the specific steps I take to install Arch Linux on my ThinkPad x220, Dell xps13 and Zotec Nano AD10. It is also a learning exercise in Arch Linux and some 'low level' Linux topics.
 
-This guide was written in July 2017. If you're reading this guide much later, then things are likely to have moved on and you may want to consult the Arch Wiki for more up to date techniques and components, etc.
+This guide was originally written in July 2017 and last updated in November 2017. If you're reading this guide much later, then things are likely to have moved on and you may want to consult the Arch Wiki for more up to date techniques and components, etc.
 
 It's worth remembering that, although the installation is a fairly manual process, the tasks we are completing in this installation are not very different from other operating system installations. In brief, we are:
 
@@ -12,8 +12,6 @@ It's worth remembering that, although the installation is a fairly manual proces
 * Choosing regional settings (e.g. keyboard layout and time-zone)
 * Downloading and installing packages
 * Configuring a boot loader
-
-
 
 ## Installation media
 
@@ -30,6 +28,10 @@ See https://wiki.archlinux.org/index.php/USB_flash_installation_media for more d
 
 ## UEFI setup
 
+This depends on your UEFI firmware.
+
+### ThinkPad x220
+
 Press `F1` after switching on the computer to enter `ThinkPad Setup`. You can reset most settings to their defaults by choosing `Load Setup Defaults` in the `Restart` menu.
 
 In the `Startup` > `Boot` screen, ensure that you can boot from the USB HDD and also from the primary hard-drive (so that when you reboot and remove the USB drive, you boot from the hard-drive).
@@ -41,6 +43,8 @@ For extra security, you may wish to password protect `ThinkPad Setup` with a Sup
 Ensure that you are booting in UEFI mode and that you can boot from USB. Insert the installion media into the ThinkPad and boot. Hit F12 while the machine is booting to bring up a menu that will allow you to boot from the USB drive. Select the USB drive to boot the install image.
 
 The ThinkPad should boot up and log you in as the root user.
+
+If you are booting a to an HD screen, you probably want to set the resolution. You can do this by typing e when the boot menu appears and appending `video=1366×768` to the end of the string (https://wiki.archlinux.org/index.php/kernel_parameters#systemd-boot).
 
 ## Pre-installation
 
@@ -132,7 +136,7 @@ chroot into /mnt to continue the installation with the installers special chroot
 
 Do some basic configuration of locales and timezones, etc.
 
-Note that a couple of the following commands (those to do with the keyboard and time) repeat what we did in 'Pre-installation'. We repeat them here so tha they persist to the drives we mounted and hence the installed system.
+Note that a couple of the following commands (those to do with the keyboard and time) repeat what we did in 'Pre-installation'. We repeat them here so that they persist to the drives we mounted and hence the installed system.
 
 `ln -sf /usr/share/zoneinfo/Europe/London /etc/localtime`
 `hwclock --systohc`
@@ -157,15 +161,27 @@ Installing `pacman -S iw wpa_supplicant dialog` makes it simple to connect wirel
 
 TODO: ensure that I need to carry out this step
 
-## Recreate initramfs
+## Build a custom initramfs
 
-We need to recreate initramfs to work with the encrypted filesystem.
+We need to build an initramfs that will work for us. To do this we edit `/etc/mkinitcpio.conf` and run `mkinitcpio -p linux` when finished.
 
-First, edit `/etc/mkinitcpio.conf` and ensure that the following three words (`keyboard`, `keymap`, and `encrypt`) are added to the `HOOKS=...` line if they are not already present. Ensure that they are written in the order specified above.
+Read the `/etc/mkinitcpio.conf` file and https://wiki.archlinux.org/index.php/Mkinitcpio for more information.
 
-Read the comments in the `/etc/mkinitcpio.conf` file and https://wiki.archlinux.org/index.php/Mkinitcpio for more information.
+## Ensuring the USB keyboard is available early on
 
-Then recreate the initramfs file with `mkinitcpio -p linux`.
+Add the `keyboard` hook.
+
+## Unencrypting the encrypted partition
+
+Add the `encrypt` hook. Note that hooks are executed in order. Hence if you want to use your USB keyboard to enter the passphrase, and have the prompt displayed in a nice font, ensure that the `encrypt` hook appears after `keyboard` and `consolefont`.
+
+## Setting a nice console font
+
+Ensure you have access to the console font you want to use (`pacman -S terminus-font`).
+
+Add a font line to /etc/vconsole.conf, for example `FONT=ter-u32n`.
+
+Add the `consolefont` hook to `/etc/mkinitcpio.conf`.
 
 ## Boot loader
 
@@ -200,7 +216,7 @@ options cryptdevice=UUID=284e9b4f-07ed-41eb-8838-84ec79f42f4a:cryptroot root=/de
 * `initrd` points to the initial ramdisk (relative to the boot partition root). It is also used to enable Intel microcode updates
 * `options` is used to pass options to the kernel
 
-The options merit a little more explanation. We need to add a `cryptdevice` option to give bootloader details of the encrypted drive. The bootloader will then prompt for the password of the encrypted drive at startup. `root` tells the kernal which device to mount as the root filesystem (the name is derived from the device mapper specified in cryptdevice: /dev/mapper/cryptroot).
+The options are kernel options that are passed to the kernel. They merit a little more explanation. We need to add a `cryptdevice` option to give bootloader details of the encrypted drive. The bootloader will then prompt for the password of the encrypted drive at startup. `root` tells the kernal which device to mount as the root filesystem (the name is derived from the device mapper specified in cryptdevice: /dev/mapper/cryptroot).
 
 Note: the UUID passed to cryptdevice is the UUID of the **parent** device that contains the encrypted device, not the UUID of the encrypted device itself. i.e in this case, it is the UUID of `/dev/sda1`, not of `/dev/mapper/cryptroot`.
 
